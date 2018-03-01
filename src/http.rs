@@ -1,5 +1,6 @@
 use std::sync::{Mutex, Arc};
 use std::thread;
+use std::time;
 use super::support;
 
 use futures::future::Future;
@@ -7,6 +8,8 @@ use futures::sync::oneshot;
 use hyper;
 use hyper::StatusCode;
 use hyper::server::{Http, Request, Response, Service};
+
+pub static PORT: u16 = 9622;
 
 pub struct GameServer {
     state: Arc<Mutex<support::GameState>>,
@@ -20,7 +23,18 @@ impl GameServer {
     }
 
     pub fn run(state: Arc<Mutex<support::GameState>>, kill_receiver: oneshot::Receiver<()>) {
-        let addr = "127.0.0.1:9866".parse().unwrap();
+        {
+            let is_approved = || -> bool {
+                let state = state.lock().unwrap();
+                state.approved
+            };
+            while !is_approved() {
+                thread::sleep(time::Duration::from_millis(500));
+            }
+        }
+        println!("Launching server on port {}", PORT);
+        // TODO not this
+        let addr = format!("127.0.0.1:{}", PORT).parse().unwrap();
         let server = Http::new().bind(&addr, move || Ok(Self::new(Arc::clone(&state)))).unwrap();
         server.run_until(kill_receiver.map_err(|_| ())).unwrap();
     }

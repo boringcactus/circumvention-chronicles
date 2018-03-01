@@ -6,12 +6,13 @@ use std::sync::{Mutex, Arc};
 
 use hyper::{Method, StatusCode, Response};
 
+use super::http;
 use super::level::Level;
 
 // Stolen from conrod examples
 
 pub struct GameState {
-    approved: bool,
+    pub approved: bool,
     pub current_level: Level,
     showing_hint: bool,
 }
@@ -27,9 +28,10 @@ impl GameState {
 
     pub fn description(&self) -> String {
         match self.approved {
-            false => "Circumvention Chronicles is only for adults. It does not contain porn, but it does \
-                contain unambiguous descriptions of it. If you are 18 or older and you are comfortable \
-                with this, press \"Begin\". If not, press Esc or close this window.".to_string(),
+            false => format!("Circumvention Chronicles is only for adults. It does not contain porn, but it is \
+                about porn. Additionally, it relies on a locally bound Web server on port {} \
+                that may trigger firewall warnings. If you are 18 or older and you are comfortable \
+                with this, press \"Begin\". If not, press Esc or close this window.", http::PORT),
             true => self.current_level.description()
         }
     }
@@ -45,7 +47,9 @@ impl GameState {
         if !self.approved {
             self.approved = true;
         } else {
-            self.current_level = self.current_level.handle_button_press();
+            if let Some(new_level) = self.current_level.handle_button_press() {
+                self.current_level = new_level;
+            }
         }
     }
 

@@ -1,6 +1,7 @@
 use open;
 
 use hyper::Method;
+use super::http::PORT;
 
 #[derive(Clone)]
 pub enum Level {
@@ -24,12 +25,12 @@ impl Level {
         }
     }
 
-    pub fn handle_button_press(&self) -> Self {
+    pub fn handle_button_press(&self) -> Option<Self> {
         match self {
-            &Level::Tutorial => Level::Demo(0),
+            &Level::Tutorial => Some(Level::Demo(0)),
             &Level::Demo(_) => {
-                open::that("http://localhost:9866").unwrap();
-                Level::Demo(0)
+                open::that(format!("http://localhost:{}", PORT)).unwrap();
+                None
             }
         }
     }
