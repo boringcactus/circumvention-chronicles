@@ -4,18 +4,16 @@ cache: cargo
 os:
     - linux
     - osx
-jobs:
-    include:
-        - script: cargo test --verbose
-        - stage: deploy
-          script:
-            - cargo build --release
-            - mkdir dist
-            - cp -r assets dist/
-            - cp target/release/circumvention-chronicles dist/
-            - export BUTLER_DIST=linux
-            - if [ "$TRAVIS_OS_NAME" -eq "osx" ]; export BUTLER_DIST=darwin; fi
-            - curl -o butler https://dl.itch.ovh/butler/$BUTLER_DIST-amd64/head/butler
-            - chmod +x butler
-            - ./butler -V
-            - ./butler push dist boringcactus/circumvention-chronicles:$TRAVIS_OS_NAME-jam
+script:
+    - cargo test --verbose
+    - cargo build --release
+    - mkdir dist
+    - cp -r assets dist/
+    - cp target/release/circumvention-chronicles dist/
+    - export BUTLER_DIST=linux
+    - test "$TRAVIS_OS_NAME" -eq "linux" || export BUTLER_DIST=darwin
+    - echo $BUTLER_DIST
+    - curl -o butler https://dl.itch.ovh/butler/$BUTLER_DIST-amd64/head/butler
+    - chmod +x butler
+    - ./butler -V
+    - ./butler push dist boringcactus/circumvention-chronicles:$TRAVIS_OS_NAME-jam

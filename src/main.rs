@@ -101,8 +101,11 @@ fn main() {
         });
     }
 
+    println!("Dumping window");
     drop(window);
 
+    println!("Requesting that server stop");
     server_kill_sender.send(()).unwrap();
+    println!("Waiting for server to stop");
     server_handle.join().unwrap();
 }
