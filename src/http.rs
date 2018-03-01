@@ -1,6 +1,5 @@
 use std::sync::{Mutex, Arc};
 use std::thread;
-use std::time;
 use super::support;
 
 use futures::future::{Future, Shared};

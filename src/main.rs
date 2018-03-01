@@ -4,6 +4,7 @@ extern crate find_folder;
 extern crate futures;
 extern crate hyper;
 extern crate open;
+extern crate rand;
 
 use std::thread;
 use std::sync::{Mutex, Arc};

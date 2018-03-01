@@ -1,5 +1,3 @@
-extern crate rand;
-
 use conrod;
 use std;
 use std::sync::{Mutex, Arc};
