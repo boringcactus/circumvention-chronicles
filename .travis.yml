@@ -6,10 +6,10 @@ os:
     - osx
 script:
     - cargo test --verbose
-    - cargo build --release
+    - cargo build
     - mkdir dist
     - cp -r assets dist/
-    - cp target/release/circumvention-chronicles dist/
+    - cp target/debug/circumvention-chronicles dist/
     - export BUTLER_DIST=linux
     - test "$TRAVIS_OS_NAME" = "linux" || export BUTLER_DIST=darwin
     - echo $BUTLER_DIST
