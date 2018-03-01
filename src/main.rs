@@ -3,7 +3,7 @@ extern crate piston_window;
 extern crate find_folder;
 
 use piston_window::{PistonWindow, UpdateEvent, Window, WindowSettings};
-use piston_window::{Flip, G2d, G2dTexture, Texture, TextureSettings};
+use piston_window::{G2d, G2dTexture, TextureSettings};
 use piston_window::OpenGL;
 use piston_window::texture::UpdateTexture;
 
@@ -44,8 +44,8 @@ fn main() {
     };
 
     let ids = support::Ids::new(ui.widget_id_generator());
-    let mut image_map = conrod::image::Map::new();
-    let mut app = support::DemoApp::new();
+    let image_map = conrod::image::Map::new();
+    let mut state = support::GameState::new();
 
     while let Some(event) = window.next() {
         let size = window.size();
@@ -56,7 +56,7 @@ fn main() {
 
         event.update(|_| {
             let mut ui = ui.set_widgets();
-            support::gui(&mut ui, &ids, &mut app);
+            support::gui(&mut ui, &ids, &mut state);
         });
 
         window.draw_2d(&event, |context, graphics| {

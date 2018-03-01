@@ -5,14 +5,53 @@ use std;
 
 // Stolen from conrod examples
 
-pub struct DemoApp {
-    value: i8,
+pub struct GameState {
+    approved: bool,
+    current_level: u8,
+    showing_hint: bool,
 }
 
-impl DemoApp {
+impl GameState {
     pub fn new() -> Self {
-        DemoApp {
-            value: 0,
+        GameState {
+            approved: false,
+            current_level: 0,
+            showing_hint: false,
+        }
+    }
+
+    pub fn description(&self) -> &str {
+        match self.approved {
+            false => "Circumvention Chronicles is only for adults. It does not contain porn, but it does \
+                contain unambiguous descriptions of it. If you are 18 or older and you are comfortable \
+                with this, press \"Begin\". If not, press Esc or close this window.",
+            true => "Welcome to Circumvention Chronicles!"
+        }
+    }
+
+    pub fn button_label(&self) -> &str {
+        match self.approved {
+            false => "Begin",
+            true => "Win Game"
+        }
+    }
+
+    pub fn handle_button_press(&mut self) {
+        if !self.approved {
+            self.approved = true;
+        } else {
+            self.current_level += 1;
+        }
+    }
+
+    pub fn toggle_hint(&mut self) {
+        self.showing_hint = !self.showing_hint;
+    }
+
+    pub fn hint(&self) -> &str {
+        match self.approved {
+            false => "",
+            true => "Click the button to win"
         }
     }
 }
@@ -39,7 +78,6 @@ pub fn theme() -> conrod::Theme {
     }
 }
 
-
 // Generate a unique `WidgetId` for each widget.
 widget_ids! {
     pub struct Ids {
@@ -51,25 +89,10 @@ widget_ids! {
         title,
         introduction,
 
-        // Shapes.
-        shapes_canvas,
-        rounded_rectangle,
-        shapes_left_col,
-        shapes_right_col,
-        shapes_title,
-        line,
-        point_path,
-        rectangle_fill,
-        rectangle_outline,
-        trapezoid,
-        oval_fill,
-        oval_outline,
-        circle,
-
         // Button, XyPad, Toggle.
-        button_title,
-        button,
-        value,
+        action_button,
+        hint_button,
+        hint_text,
 
         // Scrollbar
         canvas_scrollbar,
@@ -79,19 +102,16 @@ widget_ids! {
 
 
 /// Instantiate a GUI demonstrating every widget available in conrod.
-pub fn gui(ui: &mut conrod::UiCell, ids: &Ids, app: &mut DemoApp) {
-    use conrod::{widget, Colorable, Labelable, Positionable, Sizeable, Widget};
-    use std::iter::once;
+pub fn gui(ui: &mut conrod::UiCell, ids: &Ids, state: &mut GameState) {
+    use conrod::{widget, Labelable, Positionable, Sizeable, Widget};
 
     const MARGIN: conrod::Scalar = 30.0;
-    const SHAPE_GAP: conrod::Scalar = 50.0;
     const TITLE_SIZE: conrod::FontSize = 42;
-    const SUBTITLE_SIZE: conrod::FontSize = 32;
 
     // `Canvas` is a widget that provides some basic functionality for laying out children widgets.
     // By default, its size is the size of the window. We'll use this as a background for the
     // following widgets, as well as a scrollable container for the children widgets.
-    const TITLE: &'static str = "All Widgets";
+    const TITLE: &'static str = "Circumvention Chronicles";
     widget::Canvas::new().pad(MARGIN).scroll_kids_vertically().set(ids.canvas, ui);
 
 
@@ -104,85 +124,14 @@ pub fn gui(ui: &mut conrod::UiCell, ids: &Ids, app: &mut DemoApp) {
     // introduction to the example.
     widget::Text::new(TITLE).font_size(TITLE_SIZE).mid_top_of(ids.canvas).set(ids.title, ui);
 
-    const INTRODUCTION: &'static str =
-        "This example aims to demonstrate all widgets that are provided by conrod.\
-        \n\nThe widget that you are currently looking at is the Text widget. The Text widget \
-        is one of several special \"primitive\" widget types which are used to construct \
-        all other widget types. These types are \"special\" in the sense that conrod knows \
-        how to render them via `conrod::render::Primitive`s.\
-        \n\nScroll down to see more widgets!";
-    widget::Text::new(INTRODUCTION)
+    let desc = state.description().to_string();
+    widget::Text::new(&desc)
         .padded_w_of(ids.canvas, MARGIN)
-        .down(60.0)
+        .down(2.0 * MARGIN)
         .align_middle_x_of(ids.canvas)
-        .center_justify()
+        .left_justify()
         .line_spacing(5.0)
         .set(ids.introduction, ui);
-
-
-    ////////////////////////////
-    ///// Lines and Shapes /////
-    ////////////////////////////
-
-
-    widget::Text::new("Lines and Shapes")
-        .down(70.0)
-        .align_middle_x_of(ids.canvas)
-        .font_size(SUBTITLE_SIZE)
-        .set(ids.shapes_title, ui);
-
-    // Lay out the shapes in two horizontal columns.
-    //
-    // TODO: Have conrod provide an auto-flowing, fluid-list widget that is more adaptive for these
-    // sorts of situations.
-    widget::Canvas::new()
-        .down(0.0)
-        .align_middle_x_of(ids.canvas)
-        .kid_area_w_of(ids.canvas)
-        .h(360.0)
-        .color(conrod::color::TRANSPARENT)
-        .pad(MARGIN)
-        .flow_down(&[
-            (ids.shapes_left_col, widget::Canvas::new()),
-            (ids.shapes_right_col, widget::Canvas::new()),
-        ])
-        .set(ids.shapes_canvas, ui);
-
-    let shapes_canvas_rect = ui.rect_of(ids.shapes_canvas).unwrap();
-    let w = shapes_canvas_rect.w();
-    let h = shapes_canvas_rect.h() * 5.0 / 6.0;
-    let radius = 10.0;
-    widget::RoundedRectangle::fill([w, h], radius)
-        .color(conrod::color::CHARCOAL.alpha(0.25))
-        .middle_of(ids.shapes_canvas)
-        .set(ids.rounded_rectangle, ui);
-
-    let start = [-40.0, -40.0];
-    let end = [40.0, 40.0];
-    widget::Line::centred(start, end).mid_left_of(ids.shapes_left_col).set(ids.line, ui);
-
-    let left = [-40.0, -40.0];
-    let top = [0.0, 40.0];
-    let right = [40.0, -40.0];
-    let points = once(left).chain(once(top)).chain(once(right));
-    widget::PointPath::centred(points).right(SHAPE_GAP).set(ids.point_path, ui);
-
-    widget::Rectangle::fill([80.0, 80.0]).right(SHAPE_GAP).set(ids.rectangle_fill, ui);
-
-    widget::Rectangle::outline([80.0, 80.0]).right(SHAPE_GAP).set(ids.rectangle_outline, ui);
-
-    let bl = [-40.0, -40.0];
-    let tl = [-20.0, 40.0];
-    let tr = [20.0, 40.0];
-    let br = [40.0, -40.0];
-    let points = once(bl).chain(once(tl)).chain(once(tr)).chain(once(br));
-    widget::Polygon::centred_fill(points).mid_left_of(ids.shapes_right_col).set(ids.trapezoid, ui);
-
-    widget::Oval::fill([40.0, 80.0]).right(SHAPE_GAP + 20.0).align_middle_y().set(ids.oval_fill, ui);
-
-    widget::Oval::outline([80.0, 40.0]).right(SHAPE_GAP + 20.0).align_middle_y().set(ids.oval_outline, ui);
-
-    widget::Circle::fill(40.0).right(SHAPE_GAP).align_middle_y().set(ids.circle, ui);
 
 
     /////////////////////////////////
@@ -190,29 +139,34 @@ pub fn gui(ui: &mut conrod::UiCell, ids: &Ids, app: &mut DemoApp) {
     /////////////////////////////////
 
 
-    widget::Text::new("Button, XYPad and Toggle")
-        .down_from(ids.circle, 60.0)
-        .align_middle_x_of(ids.canvas)
-        .font_size(SUBTITLE_SIZE)
-        .set(ids.button_title, ui);
-
     let side = 130.0;
 
+    let label = state.button_label().to_string();
     for _press in widget::Button::new()
-        .label("PRESS ME")
+        .label(&label)
         .mid_left_with_margin_on(ids.canvas, MARGIN)
-        .down_from(ids.button_title, 60.0)
+        .down_from(ids.introduction, 2.0 * MARGIN)
         .w_h(side, side)
-        .set(ids.button, ui)
+        .set(ids.action_button, ui)
     {
-        let v = rand::random::<i8>();
-        app.value = v;
+        state.handle_button_press();
     }
 
-    let valueLabel = format!("Value: {}", app.value);
-    widget::Text::new(&valueLabel)
-        .right_from(ids.button, 40.0)
-        .set(ids.value, ui);
+    for _press in widget::Button::new()
+        .label("Get A Hint")
+        .down_from(ids.action_button, 1.5 * MARGIN)
+        .set(ids.hint_button, ui)
+    {
+        state.toggle_hint();
+    }
+
+    if state.showing_hint {
+        let hint = state.hint().to_string();
+        widget::Text::new(&hint)
+            .right_from(ids.hint_button, 1.5 * MARGIN)
+            .align_middle_y_of(ids.hint_button)
+            .set(ids.hint_text, ui);
+    }
 
     /////////////////////
     ///// Scrollbar /////
@@ -220,5 +174,4 @@ pub fn gui(ui: &mut conrod::UiCell, ids: &Ids, app: &mut DemoApp) {
 
 
     widget::Scrollbar::y_axis(ids.canvas).auto_hide(true).set(ids.canvas_scrollbar, ui);
-
 }
