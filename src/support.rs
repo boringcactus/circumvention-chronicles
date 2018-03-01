@@ -26,6 +26,20 @@ impl GameState {
         }
     }
 
+    fn transition(&mut self, new_level: Option<Level>) {
+        if let Some(new_level) = new_level {
+            self.current_level = new_level;
+            self.showing_hint = false;
+        }
+    }
+
+    pub fn title(&self) -> String {
+        match self.approved {
+            false => "Warning!".to_string(),
+            true => self.current_level.title()
+        }
+    }
+
     pub fn description(&self) -> String {
         match self.approved {
             false => format!("Circumvention Chronicles is only for adults. It does not contain porn, but it is \
@@ -47,9 +61,8 @@ impl GameState {
         if !self.approved {
             self.approved = true;
         } else {
-            if let Some(new_level) = self.current_level.handle_button_press() {
-                self.current_level = new_level;
-            }
+            let new_state = self.current_level.handle_button_press();
+            self.transition(new_state);
         }
     }
 
@@ -69,9 +82,7 @@ impl GameState {
             false => Response::new().with_status(StatusCode::Unauthorized),
             true => {
                 let (new_level, response) = self.current_level.handle_request(method, path);
-                if let Some(new_level) = new_level {
-                    self.current_level = new_level;
-                }
+                self.transition(new_level);
                 match response {
                     Some(result) => Response::new().with_body(result),
                     None => Response::new().with_status(StatusCode::NotFound)
@@ -138,7 +149,6 @@ pub fn gui(ui: &mut conrod::UiCell, ids: &Ids, state_mutex: &Arc<Mutex<GameState
     // `Canvas` is a widget that provides some basic functionality for laying out children widgets.
     // By default, its size is the size of the window. We'll use this as a background for the
     // following widgets, as well as a scrollable container for the children widgets.
-    const TITLE: &'static str = "Circumvention Chronicles";
     widget::Canvas::new().pad(MARGIN).scroll_kids_vertically().set(ids.canvas, ui);
 
 
@@ -149,7 +159,8 @@ pub fn gui(ui: &mut conrod::UiCell, ids: &Ids, state_mutex: &Arc<Mutex<GameState
 
     // We'll demonstrate the `Text` primitive widget by using it to draw a title and an
     // introduction to the example.
-    widget::Text::new(TITLE).font_size(TITLE_SIZE).mid_top_of(ids.canvas).set(ids.title, ui);
+    let title = state.title();
+    widget::Text::new(&title).font_size(TITLE_SIZE).mid_top_of(ids.canvas).set(ids.title, ui);
 
     let desc = state.description();
     widget::Text::new(&desc)
@@ -196,7 +207,9 @@ pub fn gui(ui: &mut conrod::UiCell, ids: &Ids, state_mutex: &Arc<Mutex<GameState
             let hint = state.hint().to_string();
             widget::Text::new(&hint)
                 .right_from(ids.hint_button, 1.5 * MARGIN)
+                .left_justify()
                 .align_middle_y_of(ids.hint_button)
+                .padded_w_of(ids.canvas, MARGIN + side)
                 .set(ids.hint_text, ui);
         }
     }

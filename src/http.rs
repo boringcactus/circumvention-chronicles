@@ -3,7 +3,7 @@ use std::thread;
 use std::time;
 use super::support;
 
-use futures::future::Future;
+use futures::future::{Future, Shared};
 use futures::sync::oneshot;
 use hyper;
 use hyper::StatusCode;
@@ -22,21 +22,21 @@ impl GameServer {
         }
     }
 
-    pub fn run(state: Arc<Mutex<support::GameState>>, kill_receiver: oneshot::Receiver<()>) {
+    pub fn run(state: Arc<Mutex<support::GameState>>, kill_receiver: Shared<oneshot::Receiver<()>>) {
         {
             let is_approved = || -> bool {
                 let state = state.lock().unwrap();
                 state.approved
             };
-            while !is_approved() {
-                thread::sleep(time::Duration::from_millis(500));
+            if !is_approved() {
+                panic!("Started server before clickthrough");
             }
         }
         println!("Launching server on port {}", PORT);
         // TODO not this
         let addr = format!("127.0.0.1:{}", PORT).parse().unwrap();
         let server = Http::new().bind(&addr, move || Ok(Self::new(Arc::clone(&state)))).unwrap();
-        server.run_until(kill_receiver.map_err(|_| ())).unwrap();
+        server.run_until(kill_receiver.map(|_| ()).map_err(|_| ())).unwrap();
     }
 }
 

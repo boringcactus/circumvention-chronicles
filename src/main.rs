@@ -8,6 +8,7 @@ extern crate open;
 use std::thread;
 use std::sync::{Mutex, Arc};
 
+use futures::Future;
 use futures::sync::oneshot;
 
 use piston_window::{PistonWindow, UpdateEvent, Window, WindowSettings};
@@ -58,11 +59,9 @@ fn main() {
     let state_mutex = Arc::new(Mutex::new(support::GameState::new()));
 
     let (server_kill_sender, server_kill_receiver) = oneshot::channel();
-    let server_state_mutex = Arc::clone(&state_mutex);
+    let server_kill_receiver = server_kill_receiver.shared();
 
-    let server_handle = thread::spawn(move || {
-        http::GameServer::run(server_state_mutex, server_kill_receiver);
-    });
+    let mut server_handle = None;
 
     while let Some(event) = window.next() {
         let size = window.size();
@@ -99,13 +98,23 @@ fn main() {
                     texture_from_image);
             }
         });
+
+        if let None = server_handle {
+            let state = state_mutex.lock().unwrap();
+            if state.approved {
+                let server_state_mutex = Arc::clone(&state_mutex);
+                let recv = server_kill_receiver.clone();
+                server_handle = Some(thread::spawn(move || {
+                    http::GameServer::run(server_state_mutex, recv);
+                }));
+            }
+        }
     }
 
-    println!("Dumping window");
     drop(window);
 
-    println!("Requesting that server stop");
     server_kill_sender.send(()).unwrap();
-    println!("Waiting for server to stop");
-    server_handle.join().unwrap();
+    if let Some(server_handle) = server_handle {
+        server_handle.join().unwrap();
+    }
 }
