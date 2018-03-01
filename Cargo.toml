@@ -1,0 +1,13 @@
+[package]
+name = "circumvention-chronicles"
+version = "0.1.0"
+authors = ["Melody Horn <boringcactus@gmail.com>"]
+
+[dependencies]
+piston_window = "^0.75.0"
+find_folder = "0.3.0"
+rand = "0.4.2"
+
+[dependencies.conrod]
+version = "0.58.0"
+features = ["piston"]
