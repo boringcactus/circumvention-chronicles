@@ -7,6 +7,9 @@ authors = ["Melody Horn <boringcactus@gmail.com>"]
 piston_window = "^0.75.0"
 find_folder = "0.3.0"
 rand = "0.4.2"
+hyper = "0.11.20"
+futures = "0.1.17"
+open = "1.2.1"
 
 [dependencies.conrod]
 version = "0.58.0"

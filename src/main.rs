@@ -1,6 +1,14 @@
 #[macro_use] extern crate conrod;
 extern crate piston_window;
 extern crate find_folder;
+extern crate futures;
+extern crate hyper;
+extern crate open;
+
+use std::thread;
+use std::sync::{Mutex, Arc};
+
+use futures::sync::oneshot;
 
 use piston_window::{PistonWindow, UpdateEvent, Window, WindowSettings};
 use piston_window::{G2d, G2dTexture, TextureSettings};
@@ -8,8 +16,10 @@ use piston_window::OpenGL;
 use piston_window::texture::UpdateTexture;
 
 mod support;
+mod level;
+mod http;
 
-// Based on conrod examples
+// Based on conrod and simple-server examples
 fn main() {
     const WIDTH: u32 = 800;
     const HEIGHT: u32 = 600;
@@ -45,7 +55,14 @@ fn main() {
 
     let ids = support::Ids::new(ui.widget_id_generator());
     let image_map = conrod::image::Map::new();
-    let mut state = support::GameState::new();
+    let state_mutex = Arc::new(Mutex::new(support::GameState::new()));
+
+    let (server_kill_sender, server_kill_receiver) = oneshot::channel();
+    let server_state_mutex = Arc::clone(&state_mutex);
+
+    let server_handle = thread::spawn(move || {
+        http::GameServer::run(server_state_mutex, server_kill_receiver);
+    });
 
     while let Some(event) = window.next() {
         let size = window.size();
@@ -56,7 +73,7 @@ fn main() {
 
         event.update(|_| {
             let mut ui = ui.set_widgets();
-            support::gui(&mut ui, &ids, &mut state);
+            support::gui(&mut ui, &ids, &state_mutex);
         });
 
         window.draw_2d(&event, |context, graphics| {
@@ -83,4 +100,9 @@ fn main() {
             }
         });
     }
+
+    drop(window);
+
+    server_kill_sender.send(()).unwrap();
+    server_handle.join().unwrap();
 }

@@ -2,12 +2,17 @@ extern crate rand;
 
 use conrod;
 use std;
+use std::sync::{Mutex, Arc};
+
+use hyper::{Method, StatusCode, Response};
+
+use super::level::Level;
 
 // Stolen from conrod examples
 
 pub struct GameState {
     approved: bool,
-    current_level: u8,
+    pub current_level: Level,
     showing_hint: bool,
 }
 
@@ -15,24 +20,24 @@ impl GameState {
     pub fn new() -> Self {
         GameState {
             approved: false,
-            current_level: 0,
+            current_level: Level::Tutorial,
             showing_hint: false,
         }
     }
 
-    pub fn description(&self) -> &str {
+    pub fn description(&self) -> String {
         match self.approved {
             false => "Circumvention Chronicles is only for adults. It does not contain porn, but it does \
                 contain unambiguous descriptions of it. If you are 18 or older and you are comfortable \
-                with this, press \"Begin\". If not, press Esc or close this window.",
-            true => "Welcome to Circumvention Chronicles!"
+                with this, press \"Begin\". If not, press Esc or close this window.".to_string(),
+            true => self.current_level.description()
         }
     }
 
     pub fn button_label(&self) -> &str {
         match self.approved {
             false => "Begin",
-            true => "Win Game"
+            true => self.current_level.button_label()
         }
     }
 
@@ -40,7 +45,7 @@ impl GameState {
         if !self.approved {
             self.approved = true;
         } else {
-            self.current_level += 1;
+            self.current_level = self.current_level.handle_button_press();
         }
     }
 
@@ -51,7 +56,23 @@ impl GameState {
     pub fn hint(&self) -> &str {
         match self.approved {
             false => "",
-            true => "Click the button to win"
+            true => self.current_level.hint()
+        }
+    }
+
+    pub fn handle_request(&mut self, method: &Method, path: &str) -> Response {
+        match self.approved {
+            false => Response::new().with_status(StatusCode::Unauthorized),
+            true => {
+                let (new_level, response) = self.current_level.handle_request(method, path);
+                if let Some(new_level) = new_level {
+                    self.current_level = new_level;
+                }
+                match response {
+                    Some(result) => Response::new().with_body(result),
+                    None => Response::new().with_status(StatusCode::NotFound)
+                }
+            }
         }
     }
 }
@@ -102,8 +123,10 @@ widget_ids! {
 
 
 /// Instantiate a GUI demonstrating every widget available in conrod.
-pub fn gui(ui: &mut conrod::UiCell, ids: &Ids, state: &mut GameState) {
+pub fn gui(ui: &mut conrod::UiCell, ids: &Ids, state_mutex: &Arc<Mutex<GameState>>) {
     use conrod::{widget, Labelable, Positionable, Sizeable, Widget};
+
+    let mut state = state_mutex.lock().unwrap();
 
     const MARGIN: conrod::Scalar = 30.0;
     const TITLE_SIZE: conrod::FontSize = 42;
@@ -124,7 +147,7 @@ pub fn gui(ui: &mut conrod::UiCell, ids: &Ids, state: &mut GameState) {
     // introduction to the example.
     widget::Text::new(TITLE).font_size(TITLE_SIZE).mid_top_of(ids.canvas).set(ids.title, ui);
 
-    let desc = state.description().to_string();
+    let desc = state.description();
     widget::Text::new(&desc)
         .padded_w_of(ids.canvas, MARGIN)
         .down(2.0 * MARGIN)
