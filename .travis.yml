@@ -11,7 +11,7 @@ script:
     - cp -r assets dist/
     - cp target/release/circumvention-chronicles dist/
     - export BUTLER_DIST=linux
-    - test "$TRAVIS_OS_NAME" -eq "linux" || export BUTLER_DIST=darwin
+    - test "$TRAVIS_OS_NAME" = "linux" || export BUTLER_DIST=darwin
     - echo $BUTLER_DIST
     - curl -o butler https://dl.itch.ovh/butler/$BUTLER_DIST-amd64/head/butler
     - chmod +x butler
