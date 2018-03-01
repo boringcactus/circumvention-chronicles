@@ -21,7 +21,7 @@ impl GameState {
     pub fn new() -> Self {
         GameState {
             approved: false,
-            current_level: Level::Tutorial,
+            current_level: Level::default(),
             showing_hint: false,
         }
     }
@@ -57,9 +57,9 @@ impl GameState {
         self.showing_hint = !self.showing_hint;
     }
 
-    pub fn hint(&self) -> &str {
+    pub fn hint(&self) -> String {
         match self.approved {
-            false => "",
+            false => String::new(),
             true => self.current_level.hint()
         }
     }
@@ -179,20 +179,26 @@ pub fn gui(ui: &mut conrod::UiCell, ids: &Ids, state_mutex: &Arc<Mutex<GameState
         state.handle_button_press();
     }
 
-    for _press in widget::Button::new()
-        .label("Get A Hint")
-        .down_from(ids.action_button, 1.5 * MARGIN)
-        .set(ids.hint_button, ui)
-    {
-        state.toggle_hint();
-    }
+    if state.approved {
+        let hint_label = match state.showing_hint {
+            false => "Show Hint",
+            true => "Hide Hint"
+        };
+        for _press in widget::Button::new()
+            .label(hint_label)
+            .down_from(ids.action_button, 1.5 * MARGIN)
+            .set(ids.hint_button, ui)
+        {
+            state.toggle_hint();
+        }
 
-    if state.showing_hint {
-        let hint = state.hint().to_string();
-        widget::Text::new(&hint)
-            .right_from(ids.hint_button, 1.5 * MARGIN)
-            .align_middle_y_of(ids.hint_button)
-            .set(ids.hint_text, ui);
+        if state.showing_hint {
+            let hint = state.hint().to_string();
+            widget::Text::new(&hint)
+                .right_from(ids.hint_button, 1.5 * MARGIN)
+                .align_middle_y_of(ids.hint_button)
+                .set(ids.hint_text, ui);
+        }
     }
 
     /////////////////////
